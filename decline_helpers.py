@@ -1,4 +1,5 @@
 import numpy as np
+import pandas as pd
 import json
 
 def secant_to_nominal(De, decline_type, b = None):
@@ -68,7 +69,7 @@ def calc_q_switch(qi, Di, b, t_switch):
     #   b                       b-factor
     #   t_switch                Time to switch from hyperbolic to exponential (years)
     # OUTPUTS:
-    #   q_switch                rate when switch from hyperbolic to exponential occurs
+    #   q_switch                Rate when switch from hyperbolic to exponential occurs
 
     c = read_settings()['days_in_year']
     return qi * (1 + b * Di * t_switch * (1 / c)) ** (-1 / b)
@@ -84,6 +85,9 @@ def terminal_switch(qi, Di, b, Dt, Di_type = 'nominal', Dt_type = 'nominal'):
     #   b                       b-factor
     #   Dt                      Terminal decline rate
     #   Di_type                 Initial decline rate type, default 'nominal'
+    # OUTPUTS:
+    #   t_switch                Time to switch from hyperbolic to exponential (years)
+    #   q_switch                Rate when switch from hyperbolic to exponential occurs
 
     if Di_type == 'secant':
         Di = secant_to_nominal(Di, 'hyperbolic', b = b)
@@ -96,3 +100,19 @@ def terminal_switch(qi, Di, b, Dt, Di_type = 'nominal', Dt_type = 'nominal'):
 
     return t_switch, q_switch
 
+def calc_exponential_forecast(time_vector = None, qi = None, Di = None):
+    # Calculates exponential decline, formatted for insertion into timeseries
+    # dataframe in case.py
+    # INPUTS:
+    #   time_vector             Instantaneous times for forecast, in numpy array\
+    #   qi                      Initial rate
+    #   Di                      Nominal initial decline rate
+    # OUTPUTS:
+    #   gas_forecast            Full rate forecast as an array - 1st column
+    #                           contains entry rates, 2nd column contains exit rates,
+    #                           3rd column contains cumulative production volumes
+
+    c = read_settings()['days_in_year']
+    rate_vector = qi * np.exp(-Di * time_vector * (1 / c))
+    vols_vector = (rate_vector[:-1] - rate_vector[1:]) / Di
+    return np.array([rate_vector[:-1], rate_vector[1:], vols_vector]).transpose()
