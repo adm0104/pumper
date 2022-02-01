@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 import json
+from . import general_helpers as helpers
 
 def secant_to_nominal(De, decline_type, b = None):
     # Converts secant effective decline to nominal decline
@@ -36,17 +37,6 @@ def nominal_to_secant(Di, decline_type, b = None):
         De = 1 - 1 / (1 + b * Di) ** (1 / b)
     return De
 
-def read_settings():
-    # Reads settings json file (settings.json)
-    # Settings contains unit conversion constants, other user preferences
-    # INPUTS:
-    #   None
-    # OUTPUTS:
-    #   settings                Dictionary of user settings
-
-    with open('settings.json') as f:
-        return json.load(f)
-
 def calc_t_switch(Di, b, Dt):
     # Calculates point in time when the switch from hyperbolic to exponential decline occurs
     # Applicable only for modified hyperbolic declines
@@ -57,7 +47,7 @@ def calc_t_switch(Di, b, Dt):
     # OUTPUTS:
     #   t_switch                Time to switch from hyperbolic to exponential (years)
 
-    c = read_settings()['days_in_year']
+    c = helpers.read_settings()['days_in_year']
     return (Di / Dt - 1) / (b * Di) * c
 
 def calc_q_switch(qi, Di, b, t_switch):
@@ -71,7 +61,7 @@ def calc_q_switch(qi, Di, b, t_switch):
     # OUTPUTS:
     #   q_switch                Rate when switch from hyperbolic to exponential occurs
 
-    c = read_settings()['days_in_year']
+    c = helpers.read_settings()['days_in_year']
     return qi * (1 + b * Di * t_switch * (1 / c)) ** (-1 / b)
 
 def terminal_switch(qi, Di, b, Dt, Di_type = 'nominal', Dt_type = 'nominal'):
@@ -99,65 +89,3 @@ def terminal_switch(qi, Di, b, Dt, Di_type = 'nominal', Dt_type = 'nominal'):
     q_switch = calc_q_switch(qi, Di, b, t_switch)
 
     return t_switch, q_switch
-
-def calc_exponential_forecast(time_vector, qi, Di):
-    # Calculates exponential decline rates and volumes, formatted for timeseries
-    # dataframe in case.py
-    # INPUTS:
-    #   time_vector             Instantaneous times for forecast, in numpy array\
-    #   qi                      Initial rate
-    #   Di                      Nominal initial decline rate
-    # OUTPUTS:
-    #   gas_forecast            Full rate forecast as an array - 1st column
-    #                           contains entry rates, 2nd column contains exit rates,
-    #                           3rd column contains cumulative production volumes
-
-    rate_vector = calc_exponential_rates(time_vector, qi, Di)
-    entry_rates, exit_rates = vector_to_endpoints(rate_vector)
-    vols_vector = calc_exponential_volumes(rate_vector, Di)
-    return np.array([entry_rates, exit_rates, vols_vector]).transpose()
-
-def calc_exponential_rates(time_vector, qi, Di):
-    # Calculates rates along time_vector per inputs qi and Di using Arps' exponential
-    # decline
-    # INPUTS:
-    #   time_vector             Instantaneous times for forecast, in numpy array
-    #   qi                      Initial rate
-    #   Di                      Nominal initial decline rate
-    # OUTPUTS:
-    #   rate_vector             Vector of rates
-
-    c = read_settings()['days_in_year']
-    rate_vector = qi * np.exp(-Di * time_vector * (1 / c))
-    return rate_vector
-
-def calc_exponential_volumes(rate_vector, Di):
-    # Calculates volumes integral for exponential decline between rates in 
-    # rate_vector
-    # INPUTS:
-    #   rate_vector             Instantaneous rates for forecast, in numpy array
-    #   Di                      Nominal initial decline rate
-    # OUTPUTS:
-    #   vols_vector             Vector of volumes
-
-    vols_vector = (rate_vector[:-1] - rate_vector[1:]) / Di
-    return vols_vector
-
-def vector_to_endpoints(vector):
-    # Function for assisting with endpoint definition in timeseries calculations
-    # Converts a single numpy vector of size N into two arrays of size N - 1
-    # "entry_vector" starts with value 0, ends with value N-1
-    # 
-    # INPUTS:
-    #   vector                  Any N x 1 numpy array
-    # OUTPUTS:
-    #   entry_vector            numpy array including all elements of "vector" except last
-    #   exit_vector             numpy array including all elements of "vector" except first
-
-    entry_vector = vector[:-1]
-    exit_vector = vector[1:]
-
-    return entry_vector, exit_vector
-
-def calc_harmonic_forecast():
-    None
