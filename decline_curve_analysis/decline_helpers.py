@@ -1,6 +1,4 @@
 import numpy as np
-import pandas as pd
-import json
 from . import general_helpers as helpers
 
 def secant_to_nominal(De, decline_type, b = None):

@@ -1,8 +1,7 @@
 import pandas as pd
 import numpy as np
 import json
-
-import decline_helpers as dca
+from . import decline_curve_analysis as dca
 
 class case:
 
@@ -41,5 +40,5 @@ class case:
             'harmonic': dca.calc_harmonic_forecast
         }
         
-        gas_forecast = dispatch_map[forecast_type](self.time_vector, qi, Di)
+        gas_forecast = dispatch_map[forecast_type](self.time_vector, qi, Di, b = b)
         self.timeseries.loc[:, ['entry_gas_rate', 'exit_gas_rate', 'gas_volume']] = gas_forecast

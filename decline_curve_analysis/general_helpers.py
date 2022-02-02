@@ -1,6 +1,7 @@
 import pandas as pd
 import numpy as np
 import json
+import importlib.resources
 
 def read_settings():
     # Reads settings json file (settings.json)
@@ -10,8 +11,9 @@ def read_settings():
     # OUTPUTS:
     #   settings                Dictionary of user settings
 
-    with open('settings.json') as f:
-        return json.load(f)
+    with importlib.resources.open_text('pumper.decline_curve_analysis', 'settings.json') as file:
+        return json.load(file)
+
 
 def vector_to_endpoints(vector):
     # Function for assisting with endpoint definition in timeseries calculations
