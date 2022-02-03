@@ -1,7 +1,7 @@
 import numpy as np
 from .. import general_helpers as helpers
 
-def calc_exponential_forecast(time_vector, qi, Di):
+def calc_exponential_forecast(time_vector, **kwargs):
     # Calculates exponential decline rates and volumes, formatted for timeseries
     # dataframe in case.py
     # INPUTS:
@@ -13,6 +13,7 @@ def calc_exponential_forecast(time_vector, qi, Di):
     #                           contains entry rates, 2nd column contains exit rates,
     #                           3rd column contains cumulative production volumes
 
+    qi, Di = kwargs['qi'], kwargs['Di']
     rate_vector = calc_exponential_rates(time_vector, qi, Di)
     entry_rates, exit_rates = helpers.vector_to_endpoints(rate_vector)
     vols_vector = calc_exponential_volumes(rate_vector, Di)
