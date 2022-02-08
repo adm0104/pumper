@@ -51,7 +51,8 @@ class case:
         dispatch_map = {
             'exponential': dca.calc_exponential_forecast,
             'harmonic': dca.calc_harmonic_forecast,
-            'hyperbolic': dca.calc_hyperbolic_forecast
+            'hyperbolic': dca.calc_hyperbolic_forecast,
+            'flat': dca.calc_flat_forecast
         }
 
         gas_forecast = dispatch_map[forecast_type](self.time_vector, **kwargs)
