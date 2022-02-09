@@ -42,5 +42,6 @@ def calc_exponential_volumes(rate_vector, Di):
     # OUTPUTS:
     #   vols_vector             Vector of volumes
 
-    vols_vector = (rate_vector[:-1] - rate_vector[1:]) / Di
+    c = helpers.read_settings()['days_in_year']
+    vols_vector = (rate_vector[:-1] - rate_vector[1:]) * c / Di
     return vols_vector

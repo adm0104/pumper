@@ -17,7 +17,7 @@ def calc_hyperbolic_forecast(time_vector, **kwargs):
     qi, Di, b = kwargs['qi'], kwargs['Di'], kwargs['b']
     rate_vector = calc_hyperbolic_rates(time_vector, qi, Di, b)
     entry_rates, exit_rates = helpers.vector_to_endpoints(rate_vector)
-    vols_vector = calc_hyperbolic_volumes(rate_vector, Di, b)
+    vols_vector = calc_hyperbolic_volumes(time_vector, rate_vector, Di, b)
     return np.array([entry_rates, exit_rates, vols_vector]).transpose()
 
 def calc_hyperbolic_rates(time_vector, qi, Di, b):
@@ -35,7 +35,7 @@ def calc_hyperbolic_rates(time_vector, qi, Di, b):
     rate_vector = qi / (1 + b * Di * time_vector / c) ** (1 / b)
     return rate_vector
 
-def calc_hyperbolic_volumes(rate_vector, Di, b):
+def calc_hyperbolic_volumes(time_vector, rate_vector, Di, b):
     # Calculates volumes integral for hyperbolic decline between rates in 
     # rate_vector
     # INPUTS:
@@ -45,5 +45,7 @@ def calc_hyperbolic_volumes(rate_vector, Di, b):
     # OUTPUTS:
     #   vols_vector             Vector of volumes
 
-    vols_vector = ((rate_vector[:-1] ** b) / ((b - 1) * Di)) * (rate_vector[1:] ** (1 - b) - rate_vector[:-1] ** (1 - b))
+    c = helpers.read_settings()['days_in_year']
+    Di_moving = Di / (1 + b * Di * time_vector[:-1] / c)
+    vols_vector = ((rate_vector[:-1] ** b) / ((1 - b) * Di_moving)) * (rate_vector[:-1] ** (1 - b) - rate_vector[1:] ** (1 - b)) * c
     return vols_vector

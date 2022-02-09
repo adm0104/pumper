@@ -14,8 +14,8 @@ def secant_to_nominal(De, decline_type, b = None):
         Di = -np.log(1 - De)
     elif decline_type == 'harmonic':
         Di = De / (1 - De)
-    elif decline_type =='hyperbolic':
-        Di = (1 / b) * (1 / (1 - De) ** b - 1)
+    elif decline_type == 'hyperbolic' or decline_type == 'modified hyperbolic':
+        Di = ((1 - De) ** (-b) - 1) / b
     return Di
 
 def nominal_to_secant(Di, decline_type, b = None):
@@ -31,7 +31,7 @@ def nominal_to_secant(Di, decline_type, b = None):
         De = 1 - np.exp(-Di)
     elif decline_type == 'harmonic':
         De = Di / (1 + Di)
-    elif decline_type =='hyperbolic':
+    elif decline_type == 'hyperbolic' or decline_type == 'modified hyperbolic':
         De = 1 - 1 / (1 + b * Di) ** (1 / b)
     return De
 

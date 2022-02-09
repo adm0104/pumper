@@ -36,7 +36,7 @@ class case:
             Di = None
 
         if Dte is not None:
-            Dt = dca.secant_to_nominal(Dte, forecast_type, b)
+            Dt = dca.secant_to_nominal(Dte, 'exponential')
         else:
             Dt = None
 
@@ -52,8 +52,12 @@ class case:
             'exponential': dca.calc_exponential_forecast,
             'harmonic': dca.calc_harmonic_forecast,
             'hyperbolic': dca.calc_hyperbolic_forecast,
-            'flat': dca.calc_flat_forecast
+            'flat': dca.calc_flat_forecast,
+            'modified hyperbolic': dca.calc_mod_hyperbolic_forecast
         }
+
+        if forecast_type == 'modified hyperbolic':
+            self.t_switch, self.q_switch = dca.terminal_switch(qi, Di, b, Dt)
 
         gas_forecast = dispatch_map[forecast_type](self.time_vector, **kwargs)
         self.timeseries.loc[:, ['entry_gas_rate', 'exit_gas_rate', 'gas_volume']] = gas_forecast
