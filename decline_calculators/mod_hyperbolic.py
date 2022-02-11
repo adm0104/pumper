@@ -23,7 +23,7 @@ def calc_mod_hyperbolic_forecast(time_vector, **kwargs):
     rate_vector = np.concatenate([rate_vector_hyperbolic, rate_vector_exponential])
     entry_rates, exit_rates = helpers.vector_to_endpoints(rate_vector)
 
-    vols_vector = calc_mod_hyperbolic_volumes(time_vector[time_vector <= t_switch], rate_vector_hyperbolic, rate_vector_exponential, Di, Dt, b)
+    vols_vector = calc_mod_hyperbolic_volumes(time_vector[time_vector <= t_switch], t_switch, q_switch, rate_vector_hyperbolic, rate_vector_exponential, Di, Dt, b)
 
     return np.array([entry_rates, exit_rates, vols_vector]).transpose()
 
@@ -42,7 +42,7 @@ def calc_mod_hyperbolic_rates(time_vector, qi, Di, Dt, b, t_switch, q_switch):
     rate_vector_exponential = exp.calc_exponential_rates(time_vector[time_vector > t_switch] - t_switch, q_switch, Dt)
     return np.concatenate([rate_vector_hyperbolic, rate_vector_exponential])
 
-def calc_mod_hyperbolic_volumes(time_vector, rate_vector_hyperbolic, rate_vector_exponential, Di, Dt, b):
+def calc_mod_hyperbolic_volumes(time_vector, t_switch, q_switch, rate_vector_hyperbolic, rate_vector_exponential, Di, Dt, b):
     # Calculates volumes integral for hyperbolic decline between rates in 
     # rate_vector
     # INPUTS:
@@ -53,7 +53,16 @@ def calc_mod_hyperbolic_volumes(time_vector, rate_vector_hyperbolic, rate_vector
     #   vols_vector             Vector of volumes
 
     vols_vector_hyperbolic = hyp.calc_hyperbolic_volumes(time_vector, rate_vector_hyperbolic, Di, b)
-    vol_switch = np.array([0])
+
+    switch_month_hyp_time = np.array([time_vector[-1], t_switch])
+    switch_month_hyp_rates = np.array([rate_vector_hyperbolic[-1], q_switch])
+    switch_month_hyp_vols = hyp.calc_hyperbolic_volumes(switch_month_hyp_time, switch_month_hyp_rates, Di, b)
+
+    switch_month_exp_rates = np.array([q_switch, rate_vector_exponential[0]])
+    switch_month_exp_vols = exp.calc_exponential_volumes(switch_month_exp_rates, Dt)
+
+    vol_switch = switch_month_hyp_vols + switch_month_exp_vols
+
     vols_vector_exponential = exp.calc_exponential_volumes(rate_vector_exponential, Dt)
     return np.concatenate([vols_vector_hyperbolic, vol_switch, vols_vector_exponential])
 
