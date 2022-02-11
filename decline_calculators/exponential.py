@@ -1,6 +1,10 @@
 import numpy as np
 from .. import helper_functions as helpers
 
+# exponential.py is the core calculator for Arps' exponential decline
+#
+# Exponential decline is appropriate for reservoirs experiencing volumetric drainage
+
 def calc_exponential_forecast(time_vector, **kwargs):
     # Calculates exponential decline rates and volumes, formatted for timeseries
     # dataframe in case.py
@@ -9,7 +13,7 @@ def calc_exponential_forecast(time_vector, **kwargs):
     #   qi                      Initial rate
     #   Di                      Nominal initial decline rate
     # OUTPUTS:
-    #   gas_forecast            Full rate forecast as an array - 1st column
+    #   forecast            Full rate forecast as an array - 1st column
     #                           contains entry rates, 2nd column contains exit rates,
     #                           3rd column contains cumulative production volumes
 

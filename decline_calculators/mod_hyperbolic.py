@@ -2,6 +2,13 @@ import numpy as np
 from . import exponential as exp, hyperbolic as hyp
 from .. import helper_functions as helpers
 
+# mod_hyperbolic.py is the core calculator for the modified form of Arps' hyperbolic decline
+#
+# Specific definition of "modified Arps": 
+#   Forecasts that calculate rate with Arps' hyperbolic
+#   decline until the time where "terminal" decline rate is reached. At this point they carry
+#   forward in time with Arps' exponential decline
+
 def calc_mod_hyperbolic_forecast(time_vector, **kwargs):
     # Calculates modified hyperbolic decline rates and volumes, formatted for timeseries
     # dataframe in case.py

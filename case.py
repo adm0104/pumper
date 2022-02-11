@@ -20,21 +20,21 @@ class case:
 
         timeseries_columns = [
             'days_start', 'days_end', 'entry_gas_rate', 'exit_gas_rate', 'gas_volume', 'entry_oil_rate', 'exit_oil_rate', 'oil_volume',
-            'entry_ngl_rate', 'exit_ngl_rate', 'ngl_volume'
+            'entry_ngl_rate', 'exit_ngl_rate', 'ngl_volume', 'entry_water_rate', 'exit_water_rate', 'water_volume'
         ]
 
-        self.timeseries = pd.DataFrame(index = timeseries_index, columns = timeseries_columns)
+        self.timeseries = pd.DataFrame(index = timeseries_index, columns = timeseries_columns).fillna(0)
 
         self.time_vector = np.linspace(0, forecast_duration, forecast_duration + 1) * self.settings['days_in_month']
         self.timeseries['days_start'], self.timeseries['days_end'] = helpers.vector_to_endpoints(self.time_vector)
     
-    def gas_forecast(self, forecast_type, qi = None, qf = None, De = None, Dte = None, b = None):
+    def generate_forecast(self, phase = None, forecast_type = 'exponential', qi = None, qf = None, De = None, Dte = None, b = None):
         
         if De is not None:
             Di = helpers.secant_to_nominal(De, forecast_type, b)
         else:
             Di = None
-
+            
         if Dte is not None:
             Dt = helpers.secant_to_nominal(Dte, 'exponential')
         else:
@@ -45,7 +45,8 @@ class case:
             'qf': qf,
             'Di': Di,
             'Dt': Dt,
-            'b': b
+            'b': b,
+            'phase': phase
         }
 
         dispatch_map = {
@@ -56,8 +57,29 @@ class case:
             'modified hyperbolic': dca.calc_mod_hyperbolic_forecast
         }
 
-        if forecast_type == 'modified hyperbolic':
-            self.t_switch, self.q_switch = helpers.terminal_switch(qi, Di, b, Dt)
+        forecast = dispatch_map[forecast_type](self.time_vector, **kwargs)
+        self.add_forecast(phase, forecast)
 
-        gas_forecast = dispatch_map[forecast_type](self.time_vector, **kwargs)
-        self.timeseries.loc[:, ['entry_gas_rate', 'exit_gas_rate', 'gas_volume']] = gas_forecast
+    def ratio_forecast(self, ratio_phase, base_phase, ratio):
+        
+        if base_phase == 'gas':
+            forecast = self.timeseries.loc[:, ['entry_gas_rate', 'exit_gas_rate', 'gas_volume']].to_numpy() * ratio
+        elif base_phase == 'oil':
+            forecast = self.timeseries.loc[:, ['entry_oil_rate', 'exit_oil_rate', 'oil_volume']].to_numpy() * ratio
+        elif base_phase == 'ngl':
+            forecast = self.timeseries.loc[:, ['entry_ngl_rate', 'exit_ngl_rate', 'ngl_volume']].to_numpy() * ratio
+        elif base_phase == 'water':
+            forecast = self.timeseries.loc[:, ['entry_water_rate', 'exit_water_rate', 'water_volume']].to_numpy() * ratio
+
+        self.add_forecast(ratio_phase, forecast)
+
+    def add_forecast(self, phase, forecast):
+
+        if phase == 'gas':
+            self.timeseries.loc[:, ['entry_gas_rate', 'exit_gas_rate', 'gas_volume']] += forecast
+        elif phase == 'oil':
+            self.timeseries.loc[:, ['entry_oil_rate', 'exit_oil_rate', 'oil_volume']] += forecast
+        elif phase == 'ngl':
+            self.timeseries.loc[:, ['entry_ngl_rate', 'exit_ngl_rate', 'ngl_volume']] += forecast
+        elif phase == 'water':
+            self.timeseries.loc[:, ['entry_water_rate', 'exit_water_rate', 'water_volume']] += forecast
