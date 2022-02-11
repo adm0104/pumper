@@ -1,6 +1,6 @@
 import numpy as np
 from . import exponential as exp, hyperbolic as hyp
-from .. import general_helpers as helpers, decline_helpers as declines
+from .. import helper_functions as helpers
 
 def calc_mod_hyperbolic_forecast(time_vector, **kwargs):
     # Calculates hyperbolic decline rates and volumes, formatted for timeseries
@@ -100,10 +100,10 @@ def terminal_switch(qi, Di, b, Dt, Di_type = 'nominal', Dt_type = 'nominal'):
     #   q_switch                Rate when switch from hyperbolic to exponential occurs
 
     if Di_type == 'secant':
-        Di = declines.secant_to_nominal(Di, 'hyperbolic', b = b)
+        Di = helpers.secant_to_nominal(Di, 'hyperbolic', b = b)
     
     if Dt_type == 'secant':
-        Dt = declines.secant_to_nominal(Dt, 'exponential')
+        Dt = helpers.secant_to_nominal(Dt, 'exponential')
     
     t_switch = calc_t_switch(Di, b, Dt)
     q_switch = calc_q_switch(qi, Di, b, t_switch)

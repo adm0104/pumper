@@ -1,5 +1,3 @@
-import pandas as pd
-import numpy as np
 import json
 import importlib.resources
 
@@ -11,7 +9,7 @@ def read_settings():
     # OUTPUTS:
     #   settings                Dictionary of user settings
 
-    with importlib.resources.open_text('pumper.decline_curve_analysis', 'settings.json') as file:
+    with importlib.resources.open_text('pumper.helper_functions', 'settings.json') as file:
         return json.load(file)
 
 

@@ -1,5 +1,5 @@
 import numpy as np
-from .. import general_helpers as helpers
+from .. import helper_functions as helpers
 
 def calc_hyperbolic_forecast(time_vector, **kwargs):
     # Calculates hyperbolic decline rates and volumes, formatted for timeseries
