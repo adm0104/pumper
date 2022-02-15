@@ -1,5 +1,7 @@
 import json
 import importlib.resources
+import pandas as pd
+import numpy as np
 
 def read_settings():
     # Reads settings json file (settings.json)
@@ -28,3 +30,15 @@ def vector_to_endpoints(vector):
     exit_vector = vector[1:]
 
     return entry_vector, exit_vector
+
+def read_default_pricing():
+    # Pulls pricing table from price file under scenario "default"
+    # INPUTS:
+    #   None
+    # OUTPUTS:
+    #   pricing                 Price table for econ run, formatted as json
+
+    with importlib.resources.open_text('pumper.helper_functions', 'pricing.json') as file:
+        price_json = json.load(file)
+
+    return price_json

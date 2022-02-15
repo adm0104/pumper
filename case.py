@@ -14,18 +14,20 @@ class case:
 
     def generate_timeseries(self):
 
-        effective_date = pd.Period(self.settings['effective_date'], 'M')
-        forecast_duration = self.settings['forecast_duration']
-        timeseries_index = pd.period_range(effective_date, effective_date + forecast_duration - 1)
+        self.effective_date = pd.Period(self.settings['effective_date'], 'M')
+        self.forecast_duration = self.settings['forecast_duration']
+        timeseries_index = pd.period_range(self.effective_date, self.effective_date + self.forecast_duration - 1)
 
         timeseries_columns = [
-            'days_start', 'days_end', 'entry_gas_rate', 'exit_gas_rate', 'gas_volume', 'entry_oil_rate', 'exit_oil_rate', 'oil_volume',
-            'entry_ngl_rate', 'exit_ngl_rate', 'ngl_volume', 'entry_water_rate', 'exit_water_rate', 'water_volume'
+            'month', 'days_start', 'days_end', 'entry_gas_rate', 'exit_gas_rate', 'gas_volume', 'entry_oil_rate', 'exit_oil_rate', 'oil_volume',
+            'entry_ngl_rate', 'exit_ngl_rate', 'ngl_volume', 'entry_water_rate', 'exit_water_rate', 'water_volume', 'oil_price', 'gas_price',
+            'oil_diff', 'gas_diff', 'ngl_diff'
         ]
 
         self.timeseries = pd.DataFrame(index = timeseries_index, columns = timeseries_columns).fillna(0)
 
-        self.time_vector = np.linspace(0, forecast_duration, forecast_duration + 1) * self.settings['days_in_month']
+        self.timeseries['month'] = np.linspace(1, self.forecast_duration, self.forecast_duration)
+        self.time_vector = np.linspace(0, self.forecast_duration, self.forecast_duration + 1) * self.settings['days_in_month']
         self.timeseries['days_start'], self.timeseries['days_end'] = helpers.vector_to_endpoints(self.time_vector)
     
     def generate_forecast(self, phase = None, forecast_type = 'exponential', qi = None, qf = None, De = None, Dte = None, b = None):
@@ -83,3 +85,10 @@ class case:
             self.timeseries.loc[:, ['entry_ngl_rate', 'exit_ngl_rate', 'ngl_volume']] += forecast
         elif phase == 'water':
             self.timeseries.loc[:, ['entry_water_rate', 'exit_water_rate', 'water_volume']] += forecast
+
+    def import_default_pricing(self):
+        self.pricing = pd.DataFrame(helpers.read_default_pricing()).to_numpy()
+        self.timeseries.loc[:, ['oil_price', 'gas_price', 'oil_diff', 'gas_diff', 'ngl_diff']] = self.pricing
+
+    def import_pricing_from_df(self, price_df):
+        None
