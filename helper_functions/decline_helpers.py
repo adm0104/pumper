@@ -1,4 +1,5 @@
 import numpy as np
+import pandas as pd
 from . import general_helpers as helpers
 
 def secant_to_nominal(De, decline_type, b = None):
@@ -87,3 +88,28 @@ def terminal_switch(qi, Di, b, Dt, Di_type = 'nominal', Dt_type = 'nominal'):
     q_switch = calc_q_switch(qi, Di, b, t_switch)
 
     return t_switch, q_switch
+
+def parse_declines(De, Dte, b, forecast_type):
+    # Simple helper function for case forecast creation
+    # Takes in secant-effective initial and terminal decline rates
+    # and returns nominal. Handles null values.
+    # INPUTS:
+    #   De                      Initial decline rate, secant effective
+    #   Dte                     Terminal decline rate, secant effective
+    #   b                       b-factor
+    #   forecast_type           Forecast type, string
+    # OUTPUTS:
+    #   Di                      Nominal initial decline rate
+    #   Dt                      Nominal terminal decline rate
+
+    if De is not None:
+        Di = secant_to_nominal(De, forecast_type, b)
+    else:
+        Di = None
+    
+    if Dte is not None:
+        Dt = secant_to_nominal(Dte, 'exponential')
+    else:
+        Dt = None
+
+    return Di, Dt
