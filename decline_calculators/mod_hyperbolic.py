@@ -90,6 +90,7 @@ def calc_t_switch(Di, b, Dt):
     #   Dt                      Terminal decline rate
     # OUTPUTS:
     #   t_switch                Time to switch from hyperbolic to exponential (years)
+    # UPDATE IN DECLINE_HELPERS.PY IF CHANGED
 
     c = helpers.read_settings()['days_in_year']
     return (Di / Dt - 1) / (b * Di) * c
@@ -104,6 +105,7 @@ def calc_q_switch(qi, Di, b, t_switch):
     #   t_switch                Time to switch from hyperbolic to exponential (years)
     # OUTPUTS:
     #   q_switch                Rate when switch from hyperbolic to exponential occurs
+    # UPDATE IN DECLINE_HELPERS.PY IF CHANGED
 
     c = helpers.read_settings()['days_in_year']
     return qi * (1 + b * Di * t_switch * (1 / c)) ** (-1 / b)
@@ -122,6 +124,7 @@ def terminal_switch(qi, Di, b, Dt, Di_type = 'nominal', Dt_type = 'nominal'):
     # OUTPUTS:
     #   t_switch                Time to switch from hyperbolic to exponential (years)
     #   q_switch                Rate when switch from hyperbolic to exponential occurs
+    # UPDATE IN DECLINE_HELPERS.PY IF CHANGED
 
     if Di_type == 'secant':
         Di = helpers.secant_to_nominal(Di, 'hyperbolic', b = b)

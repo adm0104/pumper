@@ -5,23 +5,24 @@ from . import helper_functions as helpers
 
 class case:
 
-    def __init__(self, run_on_init = False, *args):
+    def __init__(self, run_on_init = False):
         
         self.settings = helpers.read_settings()
         if run_on_init:
             #insert self.fullrun equivalent here
-            None
+            None 
 
     def generate_timeseries(self):
 
-        self.effective_date = pd.Period(self.settings['effective_date'], 'M')
-        self.forecast_duration = self.settings['forecast_duration']
-        timeseries_index = pd.period_range(self.effective_date, self.effective_date + self.forecast_duration - 1)
+        self.effective_date     = pd.Period(self.settings['effective_date'], 'M')
+        self.forecast_duration  = self.settings['forecast_duration']
+        timeseries_index        = pd.period_range(self.effective_date, self.effective_date + self.forecast_duration - 1)
 
         timeseries_columns = [
             'month', 'days_start', 'days_end', 'entry_gas_rate', 'exit_gas_rate', 'gas_volume', 'entry_oil_rate', 'exit_oil_rate', 'oil_volume',
             'entry_ngl_rate', 'exit_ngl_rate', 'ngl_volume', 'entry_water_rate', 'exit_water_rate', 'water_volume', 'oil_price', 'gas_price',
-            'oil_diff', 'gas_diff', 'ngl_diff'
+            'oil_diff', 'gas_diff', 'ngl_diff', 'oil_price_real', 'gas_price_real', 'ngl_price_real', 'oil_revenue', 'gas_revenue', 'ngl_revenue',
+            'fixed_opex', 'oil_opex', 'gas_opex', 'ngl_opex', 'water_opex', 'other_opex'
         ]
 
         self.timeseries = pd.DataFrame(index = timeseries_index, columns = timeseries_columns).fillna(0)
@@ -93,6 +94,76 @@ class case:
 
         self.pricing = pd.DataFrame(helpers.read_default_pricing()).to_numpy()
         self.timeseries.loc[:, ['oil_price', 'gas_price', 'oil_diff', 'gas_diff', 'ngl_diff']] = self.pricing
+        self.calc_realized_pricing()
 
-    def import_pricing_from_df(self, price_df):
+    def calc_realized_pricing(self):
+        self.timeseries.loc[:, ['oil_price_real']] = self.timeseries['oil_price'] + self.timeseries['oil_diff']
+        self.timeseries.loc[:, ['gas_price_real']] = self.timeseries['gas_price'] + self.timeseries['gas_diff']
+        self.timeseries.loc[:, ['ngl_price_real']] = self.timeseries['oil_price'] * self.timeseries['ngl_diff']
+
+    def import_pricing(self, format, price_file = None):
+        # To-do:    Decide how many price deck formats to allow as inputs
+        #           Currently allowing dataframe, excel, text
+        #           Flesh out kwargs and dispatch map for different options
+        #           Resolve pathing question - prefer for this and specific 
+        #           imports to be helper functions but pathing is obtuse if
+        #           it's structured that way
+        dispatch_map = {
+            'df': self.import_pricing_df,
+            'xls': self.import_pricing_xls,
+            'txt': self.import_pricing_txt
+        }
+        self.pricing = dispatch_map[format](price_file)
+    
+    def import_pricing_df(self, price_file):
+        # To-do:    Come up with a format for pricing dataframes
+        #           Come up with a reasonable way for a user to build a price deck into a dataframe
+        #           Should be able to go user DF -> object property DF -> timeseries columns
+        #           What about xls/txt/json/parquet -> DF???
+        None
+    
+    def import_pricing_xls(self, price_file):
+        # To-do:    Come up with a format for pricing spreadsheets
+        #           Try to allow user to input in any format allowed in Aries
+        #           Build parser function
+        #           Include a guide or example in README
+        None
+
+    def import_pricing_txt(self, price_file):
+        # To-do:    Come up with a format for pricing .txt docs
+        #           Try to make this similar to Aries format, is limited with .txt
+        #           Build parser function
+        #           Include a guide or example in README
+        None
+
+    def calc_sales_revenue(self):
+        self.timeseries.loc[:, ['oil_revenue']] = self.timeseries['oil_volume'] * self.timeseries['oil_price_real']
+        self.timeseries.loc[:, ['gas_revenue']] = self.timeseries['gas_volume'] * self.timeseries['gas_price_real']
+        self.timeseries.loc[:, ['ngl_revenue']] = self.timeseries['ngl_volume'] * self.timeseries['ngl_price_real']
+
+    def assign_fixed_opex(self, input_type, input):
+        
+        dispatch_map = {
+            'flat': self.flat_fixed_opex,
+            'linear': self.linear_fixed_opex,
+            'dependent': self.dependent_fixed_opex,
+            'import': self.import_fixed_opex
+        }
+
+        dispatch_map[input_type](input)
+
+    def flat_fixed_opex(self, opex):
+        #   To-do:  Actually build this
+        None
+    
+    def linear_fixed_opex(self, opex):
+        #   To-do:  Actually build this
+        None
+
+    def dependent_fixed_opex(self, opex):
+        #   To-do:  Actually build this
+        None
+
+    def import_fixed_opex(self, opex):
+        #   To-do:  Actually build this
         None
