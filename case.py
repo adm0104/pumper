@@ -139,41 +139,34 @@ class case:
 
     def calc_sales_revenue(self):
 
-        self.timeseries.loc[:, ['oil_revenue']] = self.timeseries['oil_volume'] * self.timeseries['oil_price_real']
-        self.timeseries.loc[:, ['gas_revenue']] = self.timeseries['gas_volume'] * self.timeseries['gas_price_real']
-        self.timeseries.loc[:, ['ngl_revenue']] = self.timeseries['ngl_volume'] * self.timeseries['ngl_price_real']
+        self.timeseries.loc[:, 'oil_revenue'] = self.timeseries['oil_volume'] * self.timeseries['oil_price_real']
+        self.timeseries.loc[:, 'gas_revenue'] = self.timeseries['gas_volume'] * self.timeseries['gas_price_real']
+        self.timeseries.loc[:, 'ngl_revenue'] = self.timeseries['ngl_volume'] * self.timeseries['ngl_price_real']
 
     def assign_fixed_opex(self, input, input_type, start = None, stop = None):
         
         dispatch_map = {
             'flat': self.flat_fixed_opex,
             'linear': self.linear_fixed_opex,
-            'dependent': self.dependent_fixed_opex,
             'import': self.import_fixed_opex
         }
 
         dispatch_map[input_type](input, start, stop)
 
     def flat_fixed_opex(self, opex, start = None, stop = None):
+
         self.add_to_timeseries(opex, 'fixed_opex', start, stop)
     
     def linear_fixed_opex(self, opex):
         #   To-do:  Actually build this
-        None
-
-    def dependent_fixed_opex(self, opex):
-        #   To-do:  Actually build this
+        #           Make the fixed cost a linear function
+        #           Maybe add ability to do other functions? Might not be useful...
         None
 
     def import_fixed_opex(self, opex):
         #   To-do:  Actually build this
         None
 
-    def assign_variable_opex(self, ratio_phase, base_phase, ratio):
+    def assign_variable_opex(self, ratio, base_phase, start = None, stop = None):
         
-        forecast = self.timeseries.loc[:, [
-            'entry_' + base_phase + '_rate',
-            'exit_' + base_phase + '_rate',
-            base_phase + '_volume'
-            ]].to_numpy() * ratio
-        self.add_forecast(ratio_phase, forecast)
+        self.mult_add_timeseries(ratio, base_phase + '_opex', base_phase + '_volume', start, stop)
