@@ -21,8 +21,9 @@ class case:
         timeseries_columns = [
             'month', 'days_start', 'days_end', 'entry_gas_rate', 'exit_gas_rate', 'gas_volume', 'entry_oil_rate', 'exit_oil_rate', 'oil_volume',
             'entry_ngl_rate', 'exit_ngl_rate', 'ngl_volume', 'entry_water_rate', 'exit_water_rate', 'water_volume', 'oil_price', 'gas_price',
-            'oil_diff', 'gas_diff', 'ngl_diff', 'oil_price_real', 'gas_price_real', 'ngl_price_real', 'oil_revenue', 'gas_revenue', 'ngl_revenue',
-            'fixed_opex', 'oil_opex', 'gas_opex', 'ngl_opex', 'water_opex', 'other_opex'
+            'oil_diff', 'gas_diff', 'ngl_diff', 'oil_price_real', 'gas_price_real', 'ngl_price_real', 'gross_oil_revenue', 'gross_gas_revenue', 'gross_ngl_revenue',
+            'gross_total_revenue', 'gross_fixed_opex', 'gross_oil_opex', 'gross_gas_opex', 'gross_ngl_opex', 'gross_water_opex', 'gross_other_opex', 'ad_val_tax',
+            'sev_tax', 'working_int', 'rev_int'
         ]
 
         self.timeseries             = pd.DataFrame(index = timeseries_index, columns = timeseries_columns).fillna(0)
@@ -31,8 +32,19 @@ class case:
 
         self.timeseries['days_start'], self.timeseries['days_end'] = helpers.vector_to_endpoints(self.time_vector)
 
+    def assign_to_timeseries(self, item, column, start = None, stop = None):
+
+        # To-do:    Get rid of if/else by being more intelligent with start/stop
+        #           indices - low priority
+        if start is None and stop is None:
+            self.timeseries.loc[:, column] = item
+        else:
+            self.timeseries.loc[start:stop, column] = item
+
     def add_to_timeseries(self, item, column, start = None, stop = None):
 
+        # To-do:    Get rid of if/else by being more intelligent with start/stop
+        #           indices - low priority
         if start is None and stop is None:
             self.timeseries.loc[:, column] += item
         else:
@@ -40,6 +52,8 @@ class case:
     
     def mult_add_timeseries(self, ratio, target_column, base_column, start = None, stop = None):
 
+        # To-do:    Get rid of if/else by being more intelligent with start/stop
+        #           indices - low priority
         if start is None and stop is None:
             self.timeseries.loc[:, target_column] += self.timeseries.loc[:, base_column] * ratio
         else:
@@ -137,36 +151,64 @@ class case:
 
         None
 
+    def assign_ownership(self, working_int, rev_int, type = 'frac', start = None, stop = None):
+       
+        if type == 'percent':
+            working_int     /= 100
+            rev_int         /= 100
+
+        self.assign_to_timeseries(working_int, 'working_int', start, stop)
+        self.assign_to_timeseries(rev_int, 'rev_int', start, stop)
+        
+        #self.timeseries.loc[:, 'working_int']   = working_int
+        #self.timeseries.loc[:, 'rev_int']       = rev_int
+
     def calc_sales_revenue(self):
 
-        self.timeseries.loc[:, 'oil_revenue'] = self.timeseries['oil_volume'] * self.timeseries['oil_price_real']
-        self.timeseries.loc[:, 'gas_revenue'] = self.timeseries['gas_volume'] * self.timeseries['gas_price_real']
-        self.timeseries.loc[:, 'ngl_revenue'] = self.timeseries['ngl_volume'] * self.timeseries['ngl_price_real']
+        self.timeseries.loc[:, 'gross_oil_revenue'] = self.timeseries['oil_volume'] * self.timeseries['oil_price_real']
+        self.timeseries.loc[:, 'gross_gas_revenue'] = self.timeseries['gas_volume'] * self.timeseries['gas_price_real']
+        self.timeseries.loc[:, 'gross_ngl_revenue'] = self.timeseries['ngl_volume'] * self.timeseries['ngl_price_real']
+        self.timeseries.loc[:, 'gross_total_revenue'] = self.timeseries.loc[:, ['gross_oil_revenue', 'gross_gas_revenue', 'gross_ngl_revenue']].sum(axis = 1)
 
-    def assign_fixed_opex(self, input, input_type, start = None, stop = None):
+    def calc_net_production(self):
+
+        self.timeseries.loc[:, 'gross_oil_revenue'] = self.timeseries['oil_volume'] * self.timeseries['oil_price_real']
+
+
+    def assign_gross_fixed_opex(self, input, input_type, start = None, stop = None):
         
         dispatch_map = {
-            'flat': self.flat_fixed_opex,
-            'linear': self.linear_fixed_opex,
-            'import': self.import_fixed_opex
+            'flat': self.flat_gross_fixed_opex,
+            'linear': self.linear_gross_fixed_opex,
+            'import': self.import_gross_fixed_opex
         }
 
         dispatch_map[input_type](input, start, stop)
 
-    def flat_fixed_opex(self, opex, start = None, stop = None):
+    def flat_gross_fixed_opex(self, opex, start = None, stop = None):
 
-        self.add_to_timeseries(opex, 'fixed_opex', start, stop)
+        self.add_to_timeseries(opex, 'gross_fixed_opex', start, stop)
     
-    def linear_fixed_opex(self, opex):
+    def linear_gross_fixed_opex(self, opex):
+
         #   To-do:  Actually build this
         #           Make the fixed cost a linear function
         #           Maybe add ability to do other functions? Might not be useful...
+
         None
 
-    def import_fixed_opex(self, opex):
+    def import_gross_fixed_opex(self, opex):
+
         #   To-do:  Actually build this
+        #           Going to need multiple functions for multiple file types like w/
+        #           pricing
+
         None
 
     def assign_variable_opex(self, ratio, base_phase, start = None, stop = None):
         
         self.mult_add_timeseries(ratio, base_phase + '_opex', base_phase + '_volume', start, stop)
+
+    def assign_tax(self, ad_val_rate, sev_rate, deductible = False):
+        if deductible:
+            None
