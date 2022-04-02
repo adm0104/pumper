@@ -23,7 +23,7 @@ class case:
             'entry_ngl_rate', 'exit_ngl_rate', 'ngl_volume', 'entry_water_rate', 'exit_water_rate', 'water_volume', 'oil_price', 'gas_price',
             'oil_diff', 'gas_diff', 'ngl_diff', 'oil_price_real', 'gas_price_real', 'ngl_price_real', 'gross_oil_revenue', 'gross_gas_revenue', 'gross_ngl_revenue',
             'gross_total_revenue', 'gross_fixed_opex', 'gross_oil_opex', 'gross_gas_opex', 'gross_ngl_opex', 'gross_water_opex', 'gross_other_opex', 'ad_val_tax',
-            'sev_tax', 'working_int', 'rev_int'
+            'sev_tax', 'working_int', 'rev_int', 'net_oil_volume', 'net_gas_volume', 'net_ngl_volume'
         ]
 
         self.timeseries             = pd.DataFrame(index = timeseries_index, columns = timeseries_columns).fillna(0)
@@ -159,9 +159,6 @@ class case:
 
         self.assign_to_timeseries(working_int, 'working_int', start, stop)
         self.assign_to_timeseries(rev_int, 'rev_int', start, stop)
-        
-        #self.timeseries.loc[:, 'working_int']   = working_int
-        #self.timeseries.loc[:, 'rev_int']       = rev_int
 
     def calc_sales_revenue(self):
 
@@ -172,8 +169,9 @@ class case:
 
     def calc_net_production(self):
 
-        self.timeseries.loc[:, 'gross_oil_revenue'] = self.timeseries['oil_volume'] * self.timeseries['oil_price_real']
-
+        self.timeseries.loc[:, 'net_oil_volume'] = self.timeseries['oil_volume'] * self.timeseries['rev_int']
+        self.timeseries.loc[:, 'net_gas_volume'] = self.timeseries['gas_volume'] * self.timeseries['rev_int']
+        self.timeseries.loc[:, 'net_ngl_volume'] = self.timeseries['ngl_volume'] * self.timeseries['rev_int']
 
     def assign_gross_fixed_opex(self, input, input_type, start = None, stop = None):
         
