@@ -22,10 +22,11 @@ class case:
             'month', 'days_start', 'working_int', 'rev_int', 'days_end', 'entry_gas_rate', 'exit_gas_rate', 'gas_volume', 'entry_oil_rate',
             'exit_oil_rate', 'oil_volume', 'entry_ngl_rate', 'exit_ngl_rate', 'ngl_volume', 'entry_water_rate', 'exit_water_rate', 'water_volume',
             'oil_price', 'gas_price', 'oil_diff', 'gas_diff', 'ngl_diff', 'oil_price_real', 'gas_price_real', 'ngl_price_real', 'gross_oil_revenue',
-            'gross_gas_revenue', 'gross_ngl_revenue', 'gross_total_revenue', 'net_oil_volume', 'net_gas_volume', 'net_ngl_volume', 'net_oil_revenue',
-            'net_gas_revenue', 'net_ngl_revenue', 'net_total_revenue', 'gross_capex', 'net_capex', 'gross_fixed_opex', 'gross_oil_opex', 'gross_gas_opex',
+            'gross_gas_revenue', 'gross_ngl_revenue', 'gross_revenue', 'net_oil_volume', 'net_gas_volume', 'net_ngl_volume', 'net_oil_revenue',
+            'net_gas_revenue', 'net_ngl_revenue', 'net_revenue', 'gross_capex', 'net_capex', 'gross_fixed_opex', 'gross_oil_opex', 'gross_gas_opex',
             'gross_ngl_opex', 'gross_water_opex', 'net_fixed_opex', 'net_oil_opex', 'net_gas_opex', 'net_ngl_opex', 'net_water_opex', 'net_variable_opex',
-            'net_opex', 'sev_tax', 'ad_val_tax', 'net_tax', 'net_cash_flow', 'cum_cash_flow', 'net_pv10', 'cum_pv10'
+            'net_opex', 'gross_overhead', 'net_overhead', 'sev_tax', 'ad_val_tax', 'net_tax', 'operating_profit', 'net_income', 'net_cash_flow', 
+            'cum_cash_flow', 'net_pv10', 'cum_pv10'
         ]
 
         self.timeseries             = pd.DataFrame(index = timeseries_index, columns = timeseries_columns).fillna(0)
@@ -176,12 +177,12 @@ class case:
         self.timeseries['gross_oil_revenue']        = self.timeseries['oil_volume'] * self.timeseries['oil_price_real']
         self.timeseries['gross_gas_revenue']        = self.timeseries['gas_volume'] * self.timeseries['gas_price_real']
         self.timeseries['gross_ngl_revenue']        = self.timeseries['ngl_volume'] * self.timeseries['ngl_price_real']
-        self.timeseries['gross_total_revenue']      = self.timeseries.loc[:, ['gross_oil_revenue', 'gross_gas_revenue', 'gross_ngl_revenue']].sum(axis = 1)
+        self.timeseries['gross_revenue']            = self.timeseries.loc[:, ['gross_oil_revenue', 'gross_gas_revenue', 'gross_ngl_revenue']].sum(axis = 1)
 
         self.timeseries['net_oil_revenue']          = self.timeseries['gross_oil_revenue'] * self.timeseries['rev_int']
         self.timeseries['net_gas_revenue']          = self.timeseries['gross_gas_revenue'] * self.timeseries['rev_int']
         self.timeseries['net_ngl_revenue']          = self.timeseries['gross_ngl_revenue'] * self.timeseries['rev_int']
-        self.timeseries['net_total_revenue']        = self.timeseries.loc[:, ['net_oil_revenue', 'net_gas_revenue', 'net_ngl_revenue']].sum(axis = 1)
+        self.timeseries['net_revenue']              = self.timeseries.loc[:, ['net_oil_revenue', 'net_gas_revenue', 'net_ngl_revenue']].sum(axis = 1)
 
     def calc_net_production(self):
 
@@ -233,6 +234,11 @@ class case:
 
         None
 
+    def assign_overhead(self, amount, start = None, stop = None):
+
+        self.add_to_timeseries(amount, 'gross_overhead', start, stop)
+        self.timeseries['net_overhead'] = self.timeseries.loc[:, ['rev_int', 'gross_overhead']].product(axis = 1)
+
     def assign_variable_opex(self, ratio, base_phase, start = None, stop = None):
         
         self.mult_add_timeseries(ratio, 'gross_' + base_phase + '_opex', base_phase + '_volume', start, stop)
@@ -246,21 +252,38 @@ class case:
 
     def assign_tax(self, ad_val_rate, sev_rate, deductible = True, start = None, stop = None):
 
-        self.mult_add_timeseries(sev_rate, 'sev_tax', 'net_total_revenue', start, stop)
+        self.mult_add_timeseries(sev_rate, 'sev_tax', 'net_revenue', start, stop)
 
         if deductible:
             if start is None and stop is None:
-                self.timeseries.loc[:, 'ad_val_tax'] = ad_val_rate * (self.timeseries.loc[:, 'net_total_revenue'] - self.timeseries.loc[:, 'sev_tax'])
+                self.timeseries.loc[:, 'ad_val_tax'] = ad_val_rate * (self.timeseries.loc[:, 'net_revenue'] - self.timeseries.loc[:, 'sev_tax'])
             else:
-                self.timeseries.loc[start:stop, 'ad_val_tax'] = ad_val_rate * (self.timeseries.loc[start:stop, 'net_total_revenue'] - self.timeseries.loc[start:stop, 'sev_tax'])
+                self.timeseries.loc[start:stop, 'ad_val_tax'] = ad_val_rate * (self.timeseries.loc[start:stop, 'net_revenue'] - self.timeseries.loc[start:stop, 'sev_tax'])
         else:
-            self.mult_add_timeseries(ad_val_rate, 'ad_val_tax', 'net_total_revenue', start, stop)
+            self.mult_add_timeseries(ad_val_rate, 'ad_val_tax', 'net_revenue', start, stop)
         
         self.timeseries['net_tax'] = self.timeseries.loc[:, ['sev_tax', 'ad_val_tax']].sum(axis = 1)
 
     def calc_cash_flow(self):
 
-        self.timeseries['net_cash_flow']            = self.timeseries['net_total_revenue'] - self.timeseries['net_opex'] - self.timeseries['net_tax'] - self.timeseries['net_capex']
+        self.timeseries['operating_profit'] = (
+            self.timeseries['net_revenue'] -
+            self.timeseries['net_opex'] -
+            self.timeseries['net_tax']
+        )
+        self.timeseries['net_income']               = self.timeseries['operating_profit'] - self.timeseries['net_overhead']
+        self.timeseries['net_cash_flow']            = self.timeseries['net_income'] - self.timeseries['net_capex']
         self.timeseries['cum_cash_flow']            = self.timeseries['net_cash_flow'].cumsum()
+
         self.timeseries['net_pv10']                 = self.timeseries['net_cash_flow'] / (1.1 ** (self.timeseries['days_start'] / self.settings['days_in_year']))
         self.timeseries['cum_pv10']                 = self.timeseries['net_pv10'].cumsum()
+
+    def modify_loss_function(self, loss_function):
+        
+        self.settings['default_loss_function'] = loss_function
+
+    def calc_end_of_life(self):
+
+        if self.settings['default_loss_function'] == 'NO':
+            
+            None
