@@ -23,9 +23,9 @@ class case:
             'exit_oil_rate', 'oil_volume', 'entry_ngl_rate', 'exit_ngl_rate', 'ngl_volume', 'entry_water_rate', 'exit_water_rate', 'water_volume',
             'oil_price', 'gas_price', 'oil_diff', 'gas_diff', 'ngl_diff', 'oil_price_real', 'gas_price_real', 'ngl_price_real', 'gross_oil_revenue',
             'gross_gas_revenue', 'gross_ngl_revenue', 'gross_total_revenue', 'net_oil_volume', 'net_gas_volume', 'net_ngl_volume', 'net_oil_revenue',
-            'net_gas_revenue', 'net_ngl_revenue', 'net_total_revenue', 'gross_fixed_opex', 'gross_oil_opex', 'gross_gas_opex', 'gross_ngl_opex',
-            'gross_water_opex', 'net_fixed_opex', 'net_oil_opex', 'net_gas_opex', 'net_ngl_opex', 'net_water_opex', 'net_variable_opex', 'net_opex'
-            'sev_tax', 'ad_val_tax', 'net_tax', 'net_cash_flow', 'cum_cash_flow', 'net_pv10', 'cum_pv10'
+            'net_gas_revenue', 'net_ngl_revenue', 'net_total_revenue', 'gross_capex', 'net_capex', 'gross_fixed_opex', 'gross_oil_opex', 'gross_gas_opex',
+            'gross_ngl_opex', 'gross_water_opex', 'net_fixed_opex', 'net_oil_opex', 'net_gas_opex', 'net_ngl_opex', 'net_water_opex', 'net_variable_opex',
+            'net_opex', 'sev_tax', 'ad_val_tax', 'net_tax', 'net_cash_flow', 'cum_cash_flow', 'net_pv10', 'cum_pv10'
         ]
 
         self.timeseries             = pd.DataFrame(index = timeseries_index, columns = timeseries_columns).fillna(0)
@@ -189,6 +189,18 @@ class case:
         self.timeseries['net_gas_volume']           = self.timeseries['gas_volume'] * self.timeseries['rev_int']
         self.timeseries['net_ngl_volume']           = self.timeseries['ngl_volume'] * self.timeseries['rev_int']
 
+    def assign_capex(self, amount, type = 'gross', month = None):
+
+        if month is None:
+            month = self.settings['effective_date']
+
+        if type == 'gross':
+            self.timeseries.loc[month, 'gross_capex']    += amount
+            self.timeseries.loc[month, 'net_capex']      += amount * self.timeseries.loc[month, 'rev_int']
+        elif type == 'net':
+            self.timeseries.loc[month, 'gross_capex']    += amount / self.timeseries.loc[month, 'rev_int']
+            self.timeseries.loc[month, 'net_capex']      += amount
+
     def assign_fixed_opex(self, input, input_type, start = None, stop = None):
         
         dispatch_map = {
@@ -198,6 +210,7 @@ class case:
         }
 
         dispatch_map[input_type](input, start, stop)
+        self.calc_net_opex()
 
     def flat_fixed_opex(self, opex, start = None, stop = None):
 
@@ -224,6 +237,7 @@ class case:
         
         self.mult_add_timeseries(ratio, 'gross_' + base_phase + '_opex', base_phase + '_volume', start, stop)
         self.mult_add_cols_timeseries('working_int', 'net_' + base_phase + '_opex', 'gross_' + base_phase + '_opex', start, stop)
+        self.calc_net_opex()
 
     def calc_net_opex(self):
         
@@ -246,6 +260,7 @@ class case:
 
     def calc_cash_flow(self):
 
-        self.timeseries['net_cash_flow']            = self.timeseries['net_total_revenue'] - self.timeseries['net_opex'] - self.timeseries['net_tax']
+        self.timeseries['net_cash_flow']            = self.timeseries['net_total_revenue'] - self.timeseries['net_opex'] - self.timeseries['net_tax'] - self.timeseries['net_capex']
         self.timeseries['cum_cash_flow']            = self.timeseries['net_cash_flow'].cumsum()
-        
+        self.timeseries['net_pv10']                 = self.timeseries['net_cash_flow'] / (1.1 ** (self.timeseries['days_start'] / self.settings['days_in_year']))
+        self.timeseries['cum_pv10']                 = self.timeseries['net_pv10'].cumsum()
