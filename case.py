@@ -24,7 +24,8 @@ class case:
             'oil_price', 'gas_price', 'oil_diff', 'gas_diff', 'ngl_diff', 'oil_price_real', 'gas_price_real', 'ngl_price_real', 'gross_oil_revenue',
             'gross_gas_revenue', 'gross_ngl_revenue', 'gross_total_revenue', 'net_oil_volume', 'net_gas_volume', 'net_ngl_volume', 'net_oil_revenue',
             'net_gas_revenue', 'net_ngl_revenue', 'net_total_revenue', 'gross_fixed_opex', 'gross_oil_opex', 'gross_gas_opex', 'gross_ngl_opex',
-            'gross_water_opex', 'net_fixed_opex', 'net_oil_opex', 'net_gas_opex', 'net_ngl_opex', 'net_water_opex', 'sev_tax', 'ad_val_tax'
+            'gross_water_opex', 'net_fixed_opex', 'net_oil_opex', 'net_gas_opex', 'net_ngl_opex', 'net_water_opex', 'net_variable_opex', 'net_opex'
+            'sev_tax', 'ad_val_tax', 'net_tax', 'net_cash_flow', 'cum_cash_flow', 'net_pv10', 'cum_pv10'
         ]
 
         self.timeseries             = pd.DataFrame(index = timeseries_index, columns = timeseries_columns).fillna(0)
@@ -114,9 +115,9 @@ class case:
 
     def calc_realized_pricing(self):
 
-        self.timeseries['oil_price_real'] = self.timeseries['oil_price'] + self.timeseries['oil_diff']
-        self.timeseries['gas_price_real'] = self.timeseries['gas_price'] + self.timeseries['gas_diff']
-        self.timeseries['ngl_price_real'] = self.timeseries['oil_price'] * self.timeseries['ngl_diff']
+        self.timeseries['oil_price_real']           = self.timeseries['oil_price'] + self.timeseries['oil_diff']
+        self.timeseries['gas_price_real']           = self.timeseries['gas_price'] + self.timeseries['gas_diff']
+        self.timeseries['ngl_price_real']           = self.timeseries['oil_price'] * self.timeseries['ngl_diff']
 
     def import_pricing(self, format, price_file = None):
 
@@ -224,8 +225,15 @@ class case:
         self.mult_add_timeseries(ratio, 'gross_' + base_phase + '_opex', base_phase + '_volume', start, stop)
         self.mult_add_cols_timeseries('working_int', 'net_' + base_phase + '_opex', 'gross_' + base_phase + '_opex', start, stop)
 
+    def calc_net_opex(self):
+        
+        self.timeseries['net_variable_opex']        = self.timeseries.loc[:, ['net_oil_opex', 'net_gas_opex', 'net_ngl_opex', 'net_water_opex']].sum(axis = 1)
+        self.timeseries['net_opex']                 = self.timeseries.loc[:, ['net_fixed_opex', 'net_variable_opex']].sum(axis = 1)
+
     def assign_tax(self, ad_val_rate, sev_rate, deductible = True, start = None, stop = None):
+
         self.mult_add_timeseries(sev_rate, 'sev_tax', 'net_total_revenue', start, stop)
+
         if deductible:
             if start is None and stop is None:
                 self.timeseries.loc[:, 'ad_val_tax'] = ad_val_rate * (self.timeseries.loc[:, 'net_total_revenue'] - self.timeseries.loc[:, 'sev_tax'])
@@ -233,3 +241,11 @@ class case:
                 self.timeseries.loc[start:stop, 'ad_val_tax'] = ad_val_rate * (self.timeseries.loc[start:stop, 'net_total_revenue'] - self.timeseries.loc[start:stop, 'sev_tax'])
         else:
             self.mult_add_timeseries(ad_val_rate, 'ad_val_tax', 'net_total_revenue', start, stop)
+        
+        self.timeseries['net_tax'] = self.timeseries.loc[:, ['sev_tax', 'ad_val_tax']].sum(axis = 1)
+
+    def calc_cash_flow(self):
+
+        self.timeseries['net_cash_flow']            = self.timeseries['net_total_revenue'] - self.timeseries['net_opex'] - self.timeseries['net_tax']
+        self.timeseries['cum_cash_flow']            = self.timeseries['net_cash_flow'].cumsum()
+        
