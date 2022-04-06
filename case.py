@@ -19,7 +19,7 @@ class case:
         timeseries_index            = pd.period_range(self.effective_date, self.effective_date + self.forecast_duration - 1)
 
         timeseries_columns = [
-            'month', 'days_start', 'working_int', 'rev_int', 'days_end', 'entry_gas_rate', 'exit_gas_rate', 'gas_volume', 'entry_oil_rate',
+            'month', 'days_start', 'days_end', 'working_int', 'rev_int', 'entry_gas_rate', 'exit_gas_rate', 'gas_volume', 'entry_oil_rate',
             'exit_oil_rate', 'oil_volume', 'entry_ngl_rate', 'exit_ngl_rate', 'ngl_volume', 'entry_water_rate', 'exit_water_rate', 'water_volume',
             'oil_price', 'gas_price', 'oil_diff', 'gas_diff', 'ngl_diff', 'oil_price_real', 'gas_price_real', 'ngl_price_real', 'gross_oil_revenue',
             'gross_gas_revenue', 'gross_ngl_revenue', 'gross_revenue', 'net_oil_volume', 'net_gas_volume', 'net_ngl_volume', 'net_oil_revenue',
@@ -266,15 +266,10 @@ class case:
 
     def calc_cash_flow(self):
 
-        self.timeseries['operating_profit'] = (
-            self.timeseries['net_revenue'] -
-            self.timeseries['net_opex'] -
-            self.timeseries['net_tax']
-        )
+        self.timeseries['operating_profit']         = self.timeseries['net_revenue'] - self.timeseries['net_opex'] - self.timeseries['net_tax']
         self.timeseries['net_income']               = self.timeseries['operating_profit'] - self.timeseries['net_overhead']
         self.timeseries['net_cash_flow']            = self.timeseries['net_income'] - self.timeseries['net_capex']
         self.timeseries['cum_cash_flow']            = self.timeseries['net_cash_flow'].cumsum()
-
         self.timeseries['net_pv10']                 = self.timeseries['net_cash_flow'] / (1.1 ** (self.timeseries['days_start'] / self.settings['days_in_year']))
         self.timeseries['cum_pv10']                 = self.timeseries['net_pv10'].cumsum()
 
@@ -285,5 +280,15 @@ class case:
     def calc_end_of_life(self):
 
         if self.settings['default_loss_function'] == 'NO':
-            
-            None
+            self.end_of_life = self.timeseries[self.timeseries['operating_profit'] <= 0].index[0]
+
+        elif self.settings['default_loss_function'] == 'BFIT':
+            self.end_of_life = self.timeseries[self.timeseries['net_income'] <= 0].index[0]
+
+        elif self.settings['default_loss_function'] == 'OK':
+            self.end_of_life = self.timeseries.index[-1:]
+
+    def impose_end_of_life(self):
+
+        self.calc_end_of_life()
+        self.timeseries.loc[self.end_of_life:, 'entry_gas_rate':] = 0
