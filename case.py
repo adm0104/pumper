@@ -23,7 +23,7 @@ class case:
             'month', 'days_start', 'days_end', 'working_int', 'rev_int', 'entry_gas_rate', 'exit_gas_rate', 'gas_volume', 'entry_oil_rate',
             'exit_oil_rate', 'oil_volume', 'entry_ngl_rate', 'exit_ngl_rate', 'ngl_volume', 'entry_water_rate', 'exit_water_rate', 'water_volume',
             'oil_price', 'gas_price', 'oil_diff', 'gas_diff', 'ngl_diff', 'oil_price_real', 'gas_price_real', 'ngl_price_real', 'gross_oil_revenue',
-            'gross_gas_revenue', 'gross_ngl_revenue', 'gross_revenue', 'net_oil_volume', 'net_gas_volume', 'net_ngl_volume', 'net_oil_revenue',
+            'gross_gas_revenue', 'gross_ngl_revenue', 'gross_revenue', 'net_oil_volume', 'net_gas_volume', 'net_ngl_volume', 'net_water_volume', 'net_oil_revenue',
             'net_gas_revenue', 'net_ngl_revenue', 'net_revenue', 'gross_capex', 'net_capex', 'gross_fixed_opex', 'gross_oil_opex', 'gross_gas_opex',
             'gross_ngl_opex', 'gross_water_opex', 'net_fixed_opex', 'net_oil_opex', 'net_gas_opex', 'net_ngl_opex', 'net_water_opex', 'net_variable_opex',
             'net_opex', 'gross_overhead', 'net_overhead', 'sev_tax', 'ad_val_tax', 'net_tax', 'operating_profit', 'net_income', 'net_cash_flow', 
@@ -190,6 +190,7 @@ class case:
         self.timeseries['net_oil_volume']           = self.timeseries['oil_volume'] * self.timeseries['rev_int']
         self.timeseries['net_gas_volume']           = self.timeseries['gas_volume'] * self.timeseries['rev_int']
         self.timeseries['net_ngl_volume']           = self.timeseries['ngl_volume'] * self.timeseries['rev_int']
+        self.timeseries['net_water_volume']         = self.timeseries['water_volume'] * self.timeseries['rev_int']
 
     def assign_capex(self, amount, type = 'gross', month = None):
 
@@ -278,17 +279,17 @@ class case:
 
     def modify_loss_function(self, loss_function):
         
-        self.settings['default_loss_function'] = loss_function
+        self.settings['loss_function'] = loss_function
 
     def calc_end_of_life(self):
 
-        if self.settings['default_loss_function'] == 'NO':
+        if self.settings['loss_function'] == 'NO':
             self.end_of_life = self.timeseries[self.timeseries['operating_profit'] <= 0].index[0]
 
-        elif self.settings['default_loss_function'] == 'BFIT':
+        elif self.settings['loss_function'] == 'BFIT':
             self.end_of_life = self.timeseries[self.timeseries['net_income'] <= 0].index[0]
 
-        elif self.settings['default_loss_function'] == 'OK':
+        elif self.settings['loss_function'] == 'OK':
             self.end_of_life = self.timeseries.index[-1:]
 
     def impose_end_of_life(self, zero = False):
@@ -299,6 +300,62 @@ class case:
         else:
             self.timeseries = self.timeseries.drop(self.timeseries.loc[self.end_of_life:].index)
 
-    def generate_oneline(self):
+    def generate_oneline(self, name):
 
-        None
+        self.oneline = pd.DataFrame(
+            index = [name],
+            data = self.calc_oneline_data()
+        )
+
+    def calc_oneline_data(self):
+
+        oneline_data = {
+            'working_int':          self.timeseries['working_int'].max(),
+            'rev_int':              self.timeseries['rev_int'].max(),
+            'gross_capex':          self.timeseries['gross_capex'].sum(),
+            'net_capex':            self.timeseries['net_capex'].sum(),
+            'peak_oil_rate':        self.timeseries['entry_oil_rate'].max(),
+            'peak_gas_rate':        self.timeseries['entry_gas_rate'].max(),
+            'peak_ngl_rate':        self.timeseries['entry_ngl_rate'].max(),
+            'peak_water_rate':      self.timeseries['entry_water_rate'].max(),
+            'gross_oil':            self.timeseries['oil_volume'].sum(),
+            'gross_gas':            self.timeseries['gas_volume'].sum(),
+            'gross_ngl':            self.timeseries['ngl_volume'].sum(),
+            'gross_water':          self.timeseries['water_volume'].sum(),
+            'gross_oil_revenue':    self.timeseries['gross_oil_revenue'].sum(),
+            'gross_gas_revenue':    self.timeseries['gross_gas_revenue'].sum(),
+            'gross_ngl_revenue':    self.timeseries['gross_ngl_revenue'].sum(),
+            'gross_revenue':        self.timeseries['gross_revenue'].sum(),
+            'net_oil_volume':       self.timeseries['net_oil_volume'].sum(),
+            'net_gas_volume':       self.timeseries['net_gas_volume'].sum(),
+            'net_ngl_volume':       self.timeseries['net_ngl_volume'].sum(),
+            'net_water_volume':     self.timeseries['net_water_volume'].sum(),
+            'net_oil_revenue':      self.timeseries['net_oil_revenue'].sum(),
+            'net_gas_revenue':      self.timeseries['net_gas_revenue'].sum(),
+            'net_ngl_revenue':      self.timeseries['net_ngl_revenue'].sum(),
+            'net_revenue':          self.timeseries['net_revenue'].sum(),
+            'gross_fixed_opex':     self.timeseries['gross_fixed_opex'].sum(),
+            'gross_oil_opex':       self.timeseries['gross_oil_opex'].sum(),
+            'gross_gas_opex':       self.timeseries['gross_gas_opex'].sum(),
+            'gross_ngl_opex':       self.timeseries['gross_ngl_opex'].sum(),
+            'gross_water_opex':     self.timeseries['gross_water_opex'].sum(),
+            'net_fixed_opex':       self.timeseries['net_fixed_opex'].sum(),
+            'net_oil_opex':         self.timeseries['net_oil_opex'].sum(),
+            'net_gas_opex':         self.timeseries['net_gas_opex'].sum(),
+            'net_ngl_opex':         self.timeseries['net_ngl_opex'].sum(),
+            'net_water_opex':       self.timeseries['net_water_opex'].sum(),
+            'net_variable_opex':    self.timeseries['net_variable_opex'].sum(),
+            'net_opex':             self.timeseries['net_opex'].sum(),
+            'gross_overhead':       self.timeseries['gross_overhead'].sum(),
+            'net_overhead':         self.timeseries['net_overhead'].sum(),
+            'sev_tax':              self.timeseries['sev_tax'].sum(),
+            'ad_val_tax':           self.timeseries['ad_val_tax'].sum(),
+            'net_tax':              self.timeseries['net_tax'].sum(),
+            'operating_profit':     self.timeseries['operating_profit'].sum(),
+            'net_income':           self.timeseries['net_income'].sum(),
+            'net_cash_flow':        self.timeseries['net_cash_flow'].sum(),
+            'net_pv10':             self.timeseries['net_pv10'].sum(),
+            'end_of_life':          self.end_of_life
+        }
+        
+        return oneline_data

@@ -3,5 +3,5 @@
     "days_in_month": 30.4375,
     "forecast_duration": 600,
     "effective_date": "2023-01",
-    "default_loss_function": "NO"
+    "loss_function": "NO"
 }
