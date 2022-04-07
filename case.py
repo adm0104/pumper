@@ -8,6 +8,7 @@ class case:
     def __init__(self, run_on_init = False):
 
         self.settings = helpers.read_settings()
+        self.generate_timeseries()
         if run_on_init:
             #insert self.fullrun equivalent here
             None
@@ -251,7 +252,9 @@ class case:
         self.timeseries['net_opex']                 = self.timeseries.loc[:, ['net_fixed_opex', 'net_variable_opex']].sum(axis = 1)
 
     def assign_tax(self, ad_val_rate, sev_rate, deductible = True, start = None, stop = None):
-
+        
+        # To-do:    The two types of tax are inconsistent with each other in how they handle start/stop dates
+        #           Decide whether we need start/stop on tax, and make this method consistent
         self.mult_add_timeseries(sev_rate, 'sev_tax', 'net_revenue', start, stop)
 
         if deductible:
@@ -288,7 +291,14 @@ class case:
         elif self.settings['default_loss_function'] == 'OK':
             self.end_of_life = self.timeseries.index[-1:]
 
-    def impose_end_of_life(self):
+    def impose_end_of_life(self, zero = False):
 
         self.calc_end_of_life()
-        self.timeseries.loc[self.end_of_life:, 'entry_gas_rate':] = 0
+        if zero:
+            self.timeseries.loc[self.end_of_life:, 'entry_gas_rate':] = 0
+        else:
+            self.timeseries = self.timeseries.drop(self.timeseries.loc[self.end_of_life:].index)
+
+    def generate_oneline(self):
+
+        None
