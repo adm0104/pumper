@@ -21,7 +21,7 @@ class case:
 
         timeseries_columns = [
             'month', 'days_start', 'days_end', 'working_int', 'rev_int', 'entry_gas_rate', 'exit_gas_rate', 'gas_volume', 'entry_oil_rate',
-            'exit_oil_rate', 'oil_volume', 'entry_ngl_rate', 'exit_ngl_rate', 'ngl_volume', 'entry_water_rate', 'exit_water_rate', 'water_volume',
+            'exit_oil_rate', 'oil_volume', 'entry_ngl_rate', 'exit_ngl_rate', 'ngl_volume', 'entry_water_rate', 'exit_water_rate', 'water_volume', 'shrink',
             'oil_price', 'gas_price', 'oil_diff', 'gas_diff', 'ngl_diff', 'oil_price_real', 'gas_price_real', 'ngl_price_real', 'gross_oil_revenue',
             'gross_gas_revenue', 'gross_ngl_revenue', 'gross_revenue', 'net_oil_volume', 'net_gas_volume', 'net_ngl_volume', 'net_water_volume', 'net_oil_revenue',
             'net_gas_revenue', 'net_ngl_revenue', 'net_revenue', 'gross_capex', 'net_capex', 'gross_fixed_opex', 'gross_oil_opex', 'gross_gas_opex',
@@ -78,20 +78,20 @@ class case:
         start, stop, time_vector_slice = helpers.slice_time_vector(start, stop, self.time_vector)
 
         kwargs = {
-            'qi': qi,
-            'qf': qf,
-            'Di': Di,
-            'Dt': Dt,
-            'b': b,
-            'phase': phase
+            'qi':       qi,
+            'qf':       qf,
+            'Di':       Di,
+            'Dt':       Dt,
+            'b':        b,
+            'phase':    phase
         }
 
         dispatch_map = {
-            'exponential': dca.calc_exponential_forecast,
-            'harmonic': dca.calc_harmonic_forecast,
-            'hyperbolic': dca.calc_hyperbolic_forecast,
-            'flat': dca.calc_flat_forecast,
-            'modified hyperbolic': dca.calc_mod_hyperbolic_forecast
+            'exponential':          dca.calc_exponential_forecast,
+            'harmonic':             dca.calc_harmonic_forecast,
+            'hyperbolic':           dca.calc_hyperbolic_forecast,
+            'flat':                 dca.calc_flat_forecast,
+            'modified hyperbolic':  dca.calc_mod_hyperbolic_forecast
         }
 
         forecast = dispatch_map[forecast_type](time_vector_slice, **kwargs)
@@ -109,17 +109,30 @@ class case:
         self.mult_add_timeseries(ratio, 'exit_' + ratio_phase + '_rate', 'exit_' + base_phase + '_rate', start, stop)
         self.mult_add_timeseries(ratio, ratio_phase + '_volume', base_phase + '_volume', start, stop)
 
+    def shrink(self, shrink):
+
+        self.timeseries['shrink'] = shrink
+
     def import_default_pricing(self):
 
         pricing = pd.DataFrame(helpers.read_default_pricing()).to_numpy()
         self.timeseries.loc[:, ['oil_price', 'gas_price', 'oil_diff', 'gas_diff', 'ngl_diff']] = pricing
         self.calc_realized_pricing()
 
+    def flat_pricing(self, oil_price, oil_diff, gas_price, gas_diff, ngl_diff):
+
+        self.timeseries['oil_price']            = oil_price
+        self.timeseries['oil_diff']             = oil_diff
+        self.timeseries['gas_price']            = gas_price
+        self.timeseries['gas_diff']             = gas_diff
+        self.timeseries['ngl_diff']             = ngl_diff
+        self.calc_realized_pricing()
+
     def calc_realized_pricing(self):
 
-        self.timeseries['oil_price_real']           = self.timeseries['oil_price'] + self.timeseries['oil_diff']
-        self.timeseries['gas_price_real']           = self.timeseries['gas_price'] + self.timeseries['gas_diff']
-        self.timeseries['ngl_price_real']           = self.timeseries['oil_price'] * self.timeseries['ngl_diff']
+        self.timeseries['oil_price_real']       = self.timeseries['oil_price'] + self.timeseries['oil_diff']
+        self.timeseries['gas_price_real']       = self.timeseries['gas_price'] + self.timeseries['gas_diff']
+        self.timeseries['ngl_price_real']       = self.timeseries['oil_price'] * self.timeseries['ngl_diff']
 
     def import_pricing(self, format, price_file = None):
 
@@ -176,7 +189,7 @@ class case:
     def calc_sales_revenue(self):
 
         self.timeseries['gross_oil_revenue']        = self.timeseries['oil_volume'] * self.timeseries['oil_price_real']
-        self.timeseries['gross_gas_revenue']        = self.timeseries['gas_volume'] * self.timeseries['gas_price_real']
+        self.timeseries['gross_gas_revenue']        = self.timeseries['gas_volume'] * self.timeseries['gas_price_real'] * self.timeseries['shrink']
         self.timeseries['gross_ngl_revenue']        = self.timeseries['ngl_volume'] * self.timeseries['ngl_price_real']
         self.timeseries['gross_revenue']            = self.timeseries.loc[:, ['gross_oil_revenue', 'gross_gas_revenue', 'gross_ngl_revenue']].sum(axis = 1)
 
@@ -188,7 +201,7 @@ class case:
     def calc_net_production(self):
 
         self.timeseries['net_oil_volume']           = self.timeseries['oil_volume'] * self.timeseries['rev_int']
-        self.timeseries['net_gas_volume']           = self.timeseries['gas_volume'] * self.timeseries['rev_int']
+        self.timeseries['net_gas_volume']           = self.timeseries['gas_volume'] * self.timeseries['rev_int'] * self.timeseries['shrink']
         self.timeseries['net_ngl_volume']           = self.timeseries['ngl_volume'] * self.timeseries['rev_int']
         self.timeseries['net_water_volume']         = self.timeseries['water_volume'] * self.timeseries['rev_int']
 
@@ -199,9 +212,9 @@ class case:
 
         if type == 'gross':
             self.timeseries.loc[month, 'gross_capex']    += amount
-            self.timeseries.loc[month, 'net_capex']      += amount * self.timeseries.loc[month, 'rev_int']
+            self.timeseries.loc[month, 'net_capex']      += amount * self.timeseries.loc[month, 'working_int']
         elif type == 'net':
-            self.timeseries.loc[month, 'gross_capex']    += amount / self.timeseries.loc[month, 'rev_int']
+            self.timeseries.loc[month, 'gross_capex']    += amount / self.timeseries.loc[month, 'working_int']
             self.timeseries.loc[month, 'net_capex']      += amount
 
     def assign_fixed_opex(self, input, input_type, start = None, stop = None):
@@ -245,6 +258,8 @@ class case:
         
         self.mult_add_timeseries(ratio, 'gross_' + base_phase + '_opex', base_phase + '_volume', start, stop)
         self.mult_add_cols_timeseries('working_int', 'net_' + base_phase + '_opex', 'gross_' + base_phase + '_opex', start, stop)
+        self.timeseries['gross_gas_opex'] = self.timeseries['gross_gas_opex'] * self.timeseries['shrink']
+        self.timeseries['net_gas_opex'] = self.timeseries['net_gas_opex'] * self.timeseries['shrink']
         self.calc_net_opex()
 
     def calc_net_opex(self):
@@ -355,7 +370,7 @@ class case:
             'net_income':           self.timeseries['net_income'].sum(),
             'net_cash_flow':        self.timeseries['net_cash_flow'].sum(),
             'net_pv10':             self.timeseries['net_pv10'].sum(),
-            'end_of_life':          self.end_of_life
+            #'end_of_life':          self.end_of_life
         }
         
         return oneline_data
